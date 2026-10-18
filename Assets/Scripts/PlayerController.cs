@@ -6,11 +6,13 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] float speed = 5f;
     [SerializeField] float jumpHeight = 1.8f;      // metres
+    [SerializeField] float coyoteTime = 0.1f, jumpBuffer = 0.12f;
 
     Rigidbody rb;
     InputAction moveAction, jumpAction;
     Vector3 move;                                  // from Update
-    bool isGrounded, jumpQueued;
+    bool isGrounded, jumpQueued, rising;
+    float lastGroundedTime = -1f, lastPressedTime = -1f;
     Vector3 groundPoint, groundNormal;             // last ground contact, for the gizmo
 
     void Awake()
@@ -28,8 +30,19 @@ public class PlayerController : MonoBehaviour
         Vector2 input = moveAction.ReadValue<Vector2>();
         move = Vector3.ClampMagnitude(new Vector3(input.x, 0f, input.y), 1f);
 
-        if (isGrounded && jumpAction.WasPressedThisFrame())
+        // coyote time and jump buffer: two timestamps
+        if (isGrounded && !jumpQueued && !rising)
+            lastGroundedTime = Time.time;
+        if (jumpAction.WasPressedThisFrame())
+            lastPressedTime = Time.time;
+
+        bool canJump = Time.time - lastGroundedTime <= coyoteTime;
+        bool wantJump = Time.time - lastPressedTime <= jumpBuffer;
+        if (canJump && wantJump)
+        {
             jumpQueued = true;
+            lastGroundedTime = lastPressedTime = -1f;  // used up
+        }
     }
 
     void FixedUpdate()
@@ -38,11 +51,16 @@ public class PlayerController : MonoBehaviour
 
         if (jumpQueued)
         {
+            // zero any fall first, so a coyote jump is full height
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             float g = -Physics.gravity.y;
             float v0 = Mathf.Sqrt(2f * g * jumpHeight);
             rb.AddForce(Vector3.up * rb.mass * v0, ForceMode.Impulse);
             jumpQueued = false;
+            rising = true;
         }
+        else if (rb.linearVelocity.y <= 0f)
+            rising = false;
 
         isGrounded = false;                        // this step's contacts set it again
     }
