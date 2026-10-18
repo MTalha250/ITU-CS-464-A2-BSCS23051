@@ -1,77 +1,37 @@
-# CS464 Assignment 01 · Muhammad Talha · bscs23051
+# CS464 Assignment 02 · Muhammad Talha · BSCS23051
 
-## Game 1 · Subway Surfers
+- **Video:** [YouTube (unlisted) or Google Drive link: 30–90 s, all five levels]
+- **Input:** `InputSystem.actions`: the project-wide Move and Jump actions (Active Input Handling: Input System).
+- **Ground check:** contact normal: a contact counts as ground when `Vector3.Dot(normal, Vector3.up) > 0.5f`; the last ground contact is drawn with `Gizmos.DrawRay` in `OnDrawGizmosSelected` (green when grounded).
+- **Camera:** `Vector3.SmoothDamp` in `LateUpdate`, with look-ahead from the player's flat velocity. One `Camera` prefab in every level finds the player with `FindAnyObjectByType<PlayerController>()`.
+- **Juice:** a squash on landing: `Body` scales to y = 0.7 (x and z 1.2, same volume) and springs back through `Ease.OutBack` over 0.25 s, run by a coroutine. It starts on a landing after more than 0.1 s in the air.
 
-- **Store link:** https://apps.apple.com/us/app/subway-surfers/id512939461
-- **Genre:** Endless runner
-- **I played:** About 35 minutes; best score 48,000; finished 3 mission sets.
+## Tuning
 
-<p>
-<img src="Docs/game1/1.png" width="240">
-<img src="Docs/game1/2.png" width="240">
-<img src="Docs/game1/3.png" width="240">
-</p>
+| Setting | Value | Why this number |
+|---|---|---|
+| Speed | 5 m/s | One jump at 5 m/s carries 5.1 m, so the widest gap (3 m, Level01 and Level05) leaves 2 m spare, and the 1.5 m corridor in Level04 is still easy to steer. |
+| Jump height | 1.8 m | Almost the capsule's own 2 m height. It clears every 0.3 m step with room to spare and gives the 3 m gaps a forgiving arc. |
+| Time to apex | 0.61 s | Follows from the height: v₀ = √(2·9.81·1.8) = 5.94 m/s, and v₀ / g = 0.61 s. |
+| Fall multiplier | 2.2× | The fall takes √(2·1.8 / (2.2·9.81)) = 0.41 s against 0.61 s up, so the jump lands in 1.01 s instead of 1.21 s and feels heavy, not floaty. |
+| Coyote time | 0.1 s | At 5 m/s that is 0.5 m past the edge: half the capsule's width, enough for a late press at the 3 m gaps. |
+| Jump buffer | 0.12 s | With 2.2× fall gravity the capsule covers its last 0.9 m in 0.12 s, so a press up to 0.9 m above the floor still jumps on landing. |
+| Camera smoothing | smoothTime 0.3 s | SmoothDamp alone trails a 5 m/s run by about 1.5 m (≈ speed × smoothTime): close enough to read the jump, loose enough not to shake on landing. |
+| Look-ahead | 0.35 s | 5 m/s × 0.35 s = 1.75 m ahead, which cancels the 1.5 m lag: the camera leads by about 0.3 m and shows the gap before the player reaches it. |
 
-1. M1, M2, M6 · A run in progress: the three lanes, a train and a barrier ahead, a line of coins, and the score.
-2. M3 · Riding a hoverboard during a run, with its timer showing.
-3. M5 · The missions screen: the current set of three missions and the score multiplier.
+## Four answers
 
-| # | Mechanic | Dynamic | Aesthetic | Bartle type |
-|---|---|---|---|---|
-| M1 | Swiping left or right moves the runner between three lanes; swiping up jumps and swiping down rolls. | Players read the track two or three obstacles ahead and chain swipes, changing lanes early instead of at the last moment. | **Sensation:** every swipe gives an instant, smooth move. | **Achiever:** clean control is how a score grows. |
-| M2 | Hitting a train or barrier head-on ends the run, and the run gets faster the longer it lasts. | Players turn careful late in a run, stay on train roofs where less is in the way, and start again straight after a crash. | **Challenge:** any run can be lost, and more easily as it speeds up, so a long run means something. | **Achiever:** the run is a test to beat. |
-| M3 | Double-tapping starts a hoverboard that absorbs one crash for 30 seconds. | Players save boards for the fast part of a run, and take riskier lanes while one is active. | **Challenge:** a risk the player chooses when to cover. | **Achiever:** boards protect a score worth keeping. |
-| M4 | Mystery boxes picked up on the track open after the run and give a random reward. | Players leave a safe lane to grab a box, and wait at the end of the run to see what it holds. | **Discovery:** nobody knows what is inside until it opens. | **Explorer:** finding out what the game has to give. |
-| M5 | Finishing a set of three missions raises the score multiplier for every later run. | Players plan a run around the mission list, such as jumping a set number of times, instead of only running far. | **Challenge:** short goals with a lasting payoff. | **Achiever:** a ladder of mission sets to climb. |
-| M6 | Coins collected during runs buy upgrades that make each power-up last longer. | Players steer towards coin lines even when the lane is riskier, and save up for their favourite power-up. | **Submission:** collecting and upgrading is a calm routine, a few minutes at a time. | **Achiever:** upgrades are progress that stays. |
-| M7 | The Top Run leaderboard ranks the player's best score against friends and other players. | Players replay to pass the name just above theirs, and check the board after a good run. | **Challenge:** a human score to beat. | **Killer:** moving up means pushing someone else down. |
+1. **The jump, in numbers.** With g = 9.81 and jumpHeight = 1.8 m, the launch speed is v₀ = √(2gh) = √35.3 = 5.94 m/s. On the 1 kg Rigidbody the impulse, or jumpForce, is m·v₀ = 5.94 N·s. It rises for v₀ / g = 0.61 s. Falling at 2.2 × 9.81 = 21.6 m/s², it comes down from 1.8 m in √(2·1.8 / 21.6) = 0.41 s, so it is in the air for 1.01 s. At 5 m/s that is 5.1 m of reach on flat ground, enough for the widest gap, 3 m in Level01 and Level05, with 2 m spare. Unity's 0.02 s steps make the real apex about 3% lower, roughly 1.74 m, which still clears every 0.3 m step.
+2. **Update and FixedUpdate.** Update runs every frame. It reads Move and Jump, builds `move` from the camera's flattened forward and right, stamps the coyote and buffer timestamps, queues the jump when both windows are open, and starts the squash. FixedUpdate runs every 0.02 s. It sets `rb.linearVelocity` from `move`, applies a queued jump once, and adds fall gravity. Swap them and `WasPressedThisFrame` is read only on frames that happen to run a physics step: at 144 fps about two presses in three would be lost. The physics would also run at the frame rate, so the jump and fall would change with the machine.
+3. **Vector3.Dot.** The ground check: `if (Vector3.Dot(p.normal, Vector3.up) > 0.5f)` in `OnCollisionStay`. Both vectors have length 1, so the dot is the cosine of the angle between the surface normal and straight up. Above 0.5 means the surface faces up within 60°, so a floor or the 30° ramp in Level02 counts as ground. A wall gives about 0 and a ceiling gives a negative value, so neither does, and the player can't jump off a wall in mid-air.
+4. **The juice.** `Ease.OutBack` over 0.25 s, which is 15 frames at 60 fps. The squash starts at y = 0.7 and passes about 10% beyond the rest shape before it settles, so the landing reads as weight that springs back. At 0.25 s it is over before a buffered jump can fire again, so it never fights the next takeoff. It ends by setting the scale to exactly (1, 1, 1).
 
-**Aesthetic profile:** Challenge and Sensation lead: fast swiping (M1) under a rising risk of losing the run (M2, M3, M5). Submission keeps players coming back for a few minutes at a time (M6).
+## Levels
 
-**Player types**
-
-- Primary: Achievers (acting × world), because the player acts on the game itself to beat it on its own terms: a longer run (M2), the next mission set (M5) and the next upgrade (M6).
-- Secondary: Killers (acting × players), because the leaderboard (M7) is the one place other people matter, and the only way to use it is to beat their scores.
-
-## Game 2 · Brawl Stars
-
-- **Store link:** https://apps.apple.com/us/app/brawl-stars/id1229016807
-- **Genre:** Team-based multiplayer action (3v3 brawler)
-- **I played:** About 40 minutes; 120 trophies; 4 brawlers unlocked.
-
-<p>
-<img src="Docs/game2/1.png" width="240">
-<img src="Docs/game2/2.png" width="240">
-<img src="Docs/game2/3.png" width="240">
-</p>
-
-1. M1, M3 · A Gem Grab match in progress: my ammo bars, both teams' gem counts, and the gem mine.
-2. M2 · My Super fully charged (or being used) during a match.
-3. M6 · The result screen after a match, showing trophies won or lost.
-
-| # | Mechanic | Dynamic | Aesthetic | Bartle type |
-|---|---|---|---|---|
-| M1 | A brawler holds three ammo bars; each attack uses one, and they refill one at a time. | Players fire in short bursts and step back to reload, and rush an enemy who has just used up their ammo. | **Challenge:** fights are won by timing, not by tapping fastest. | **Killer:** the timing is aimed at beating another player. |
-| M2 | Hits that land charge the Super, a stronger ability that can be used once per charge. | Players poke from range to charge it, then hold the Super for a moment that matters, such as the enemy gem carrier. | **Sensation:** the Super is the big, loud hit of the match. | **Killer:** it is saved to take someone out. |
-| M3 | In Gem Grab, gems appear from a mine in the middle; a team holding ten starts a 15-second countdown and wins if it still holds ten at the end. A defeated player drops all their gems. | One teammate becomes the carrier and falls back while the other two guard; the losing team rushes the carrier during the countdown. | **Fellowship:** the win depends on three players taking different jobs. | **Socializer:** the mode only works by playing with the team. |
-| M4 | A defeated brawler is out of the match for a few seconds before respawning on their own side. | Players with low health pull back behind walls, and teams push forward while the other side is one player short. | **Challenge:** every defeat costs the whole team time and ground. | **Killer:** removing a player is the way to gain ground. |
-| M5 | A brawler standing in a bush is hidden from enemies until one comes close or the brawler attacks. | Players wait in bushes to ambush, and others shoot into bushes to check them before walking past. | **Challenge:** hidden information to read and bluff with. | **Killer:** an ambush is something done to another player. |
-| M6 | Winning a match adds trophies to the brawler used and losing takes some away; total trophies unlock rewards on the Trophy Road. | Players stay with the brawlers they win with, and stop or switch after a losing streak to protect their trophies. | **Challenge:** a visible number is at stake in every match. | **Achiever:** a ladder with rewards along it. |
-| M7 | Coins and Power Points raise a brawler's power level, which increases its health and damage. | Players put their resources into one or two favourites instead of spreading them across all brawlers. | **Expression:** the brawlers a player builds up become their own style of play. | **Achiever:** a level to raise for each brawler. |
-
-**Aesthetic profile:** Challenge and Fellowship lead: short fights decided by timing and reading the other team (M1, M4, M5), won together in team modes (M3). Sensation supports them through the Super (M2).
-
-**Player types**
-
-- Primary: Killers (acting × players), because almost every system is about doing something to another player: out-timing them (M1), saving a Super for them (M2) and ambushing them (M5).
-- Secondary: Achievers (acting × world), because between matches the player acts on the game's own ladders: trophies (M6) and power levels (M7).
-
-## Level blockouts
-
-| Level | Screenshot | Its idea | Wayfinding tool |
-|---|---|---|---|
-| Level01 | <img src="Docs/levels/level01.png" width="320"> | A spawn room, a corridor and a walled yard with low cover, ending in a 3 m jump gap to the goal. | Landmark: a 10 m yellow tower behind the goal, visible over the walls from the spawn. |
-| Level02 | <img src="Docs/levels/level02.png" width="320"> | Height: five steps, a landing and a ramp climb to a deck 3 m up, where the goal stands. | Leading lines: a yellow floor strip runs from the spawn towards the goal. |
-| Level03 | <img src="Docs/levels/level03.png" width="320"> | A split: a short, narrow bridge over a drop, or a longer safe corridor with a reward room on the way. | Breadcrumbs: pickups 3 m apart mark the long route. |
-| Level04 | <img src="Docs/levels/level04.png" width="320"> | A squeeze: a bending corridor 1.5 m wide opens into a large pillared hall, with the goal raised on a dais. | Pinch and release: the tight corridor hides the hall until the doorway. |
-| Level05 | <img src="Docs/levels/level05.png" width="320"> | Combines the earlier ideas: a climb, a split between a narrow bridge and a wide path with cover, then a 3 m gap. | Framing: the goal is seen through the spawn room's doorway, and again through a doorway on the second deck. |
+| Level | What the controller must do there | What I changed for this jump |
+|---|---|---|
+| Level01 | Run the corridor and the yard, then jump the 3 m gap to the goal. | Nothing: 5.1 m of reach clears 3 m with 2 m spare. |
+| Level02 | Hop up five 0.3 m steps to a 1.5 m landing, then walk up the 30° ramp to the 3 m deck. | Nothing: each step is far below the 1.8 m jump, and the ramp counts as ground (its normal's dot with up is 0.87). |
+| Level03 | Cross the 1.5 m bridge, with 0.25 m spare on each side of the capsule, or take the long route past the reward room. | Nothing: there is no jump, and camera-relative movement keeps W straight along the bridge. |
+| Level04 | Steer the 1.5 m corridor round two turns, then hop three 0.3 m steps onto the 1.2 m dais. | Nothing: the steps are well within the jump. |
+| Level05 | Hop the steps onto the 1.5 m deck, take the narrow bridge or the wide path, then jump the 3 m gap to the goal. | Nothing: the same 3 m gap as Level01, with 2 m spare. |
