@@ -1,6 +1,6 @@
 # CS464 Assignment 02 · Muhammad Talha · BSCS23051
 
-- **Video:** [YouTube (unlisted) or Google Drive link: 30–90 s, all five levels]
+- **Video:** [Run through all five levels (66 s, Google Drive)](https://drive.google.com/file/d/1GHMzvcvgV1dikPs0nA4QrrQRZfhpvxUB/view?usp=sharing)
 - **Input:** `InputSystem.actions`: the project-wide Move and Jump actions (Active Input Handling: Input System).
 - **Ground check:** contact normal: a contact counts as ground when `Vector3.Dot(normal, Vector3.up) > 0.5f`; the last ground contact is drawn with `Gizmos.DrawRay` in `OnDrawGizmosSelected` (green when grounded).
 - **Camera:** `Vector3.SmoothDamp` in `LateUpdate`, with look-ahead from the player's flat velocity. One `Camera` prefab in every level finds the player with `FindAnyObjectByType<PlayerController>()`.
