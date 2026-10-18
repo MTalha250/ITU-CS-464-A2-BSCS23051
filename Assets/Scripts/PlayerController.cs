@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,13 +9,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float jumpHeight = 1.8f;      // metres
     [SerializeField] float fallMultiplier = 2.2f;
     [SerializeField] float coyoteTime = 0.1f, jumpBuffer = 0.12f;
+    [SerializeField] Transform body;               // the mesh child, squashed on landing
+    [SerializeField] float squashY = 0.7f, squashTime = 0.25f;
 
     Rigidbody rb;
     InputAction moveAction, jumpAction;
     Vector3 move;                                  // from Update
     bool isGrounded, jumpQueued, rising;
-    float lastGroundedTime = -1f, lastPressedTime = -1f;
+    float lastGroundedTime = -1f, lastPressedTime = -1f, airTime;
     Vector3 groundPoint, groundNormal;             // last ground contact, for the gizmo
+    Coroutine squash;
 
     void Awake()
     {
@@ -43,6 +47,19 @@ public class PlayerController : MonoBehaviour
         {
             jumpQueued = true;
             lastGroundedTime = lastPressedTime = -1f;  // used up
+        }
+
+        // juice: squash once per real landing
+        if (!isGrounded)
+            airTime += Time.deltaTime;
+        else
+        {
+            if (airTime > 0.1f)
+            {
+                if (squash != null) StopCoroutine(squash);
+                squash = StartCoroutine(Squash());
+            }
+            airTime = 0f;
         }
     }
 
@@ -83,6 +100,21 @@ public class PlayerController : MonoBehaviour
                 groundNormal = p.normal;
             }
         }
+    }
+
+    IEnumerator Squash()
+    {
+        float side = 1f / Mathf.Sqrt(squashY);    // keep the volume
+        Vector3 squashed = new Vector3(side, squashY, side);
+        for (float elapsed = 0f; elapsed < squashTime; elapsed += Time.deltaTime)
+        {
+            float p = Ease.OutBack(elapsed / squashTime);
+            body.localScale = Vector3.LerpUnclamped(squashed, Vector3.one, p);
+            body.localPosition = new Vector3(0f, body.localScale.y - 1f, 0f);  // feet stay down
+            yield return null;
+        }
+        body.localScale = Vector3.one;             // exactly at rest
+        body.localPosition = Vector3.zero;
     }
 
     void OnDrawGizmosSelected()

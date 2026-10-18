@@ -192,3 +192,6 @@ MonoBehaviour:
   fallMultiplier: 2.2
   coyoteTime: 0.1
   jumpBuffer: 0.12
+  body: {fileID: 6790781667269836973}
+  squashY: 0.7
+  squashTime: 0.25
