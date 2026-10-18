@@ -6,6 +6,7 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] float speed = 5f;
     [SerializeField] float jumpHeight = 1.8f;      // metres
+    [SerializeField] float fallMultiplier = 2.2f;
     [SerializeField] float coyoteTime = 0.1f, jumpBuffer = 0.12f;
 
     Rigidbody rb;
@@ -61,6 +62,9 @@ public class PlayerController : MonoBehaviour
         }
         else if (rb.linearVelocity.y <= 0f)
             rising = false;
+
+        if (rb.linearVelocity.y < 0f)              // falling: pull harder
+            rb.AddForce(Physics.gravity * (fallMultiplier - 1f), ForceMode.Acceleration);
 
         isGrounded = false;                        // this step's contacts set it again
     }
