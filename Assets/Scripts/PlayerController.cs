@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float squashY = 0.7f, squashTime = 0.25f;
 
     Rigidbody rb;
+    Transform cam;
     InputAction moveAction, jumpAction;
     Vector3 move;                                  // from Update
     bool isGrounded, jumpQueued, rising;
@@ -26,14 +27,22 @@ public class PlayerController : MonoBehaviour
         rb.freezeRotation = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.sleepThreshold = 0f;                    // a sleeping body sends no OnCollisionStay
+        cam = Camera.main.transform;
         moveAction = InputSystem.actions.FindAction("Move");
         jumpAction = InputSystem.actions.FindAction("Jump");
     }
 
     void Update()
     {
+        // move, relative to the camera, flat on the ground
         Vector2 input = moveAction.ReadValue<Vector2>();
-        move = Vector3.ClampMagnitude(new Vector3(input.x, 0f, input.y), 1f);
+        Vector3 forward = cam.forward;
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 right = cam.right;
+        right.y = 0f;
+        right.Normalize();
+        move = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
 
         // coyote time and jump buffer: two timestamps
         if (isGrounded && !jumpQueued && !rising)
